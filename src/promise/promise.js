@@ -4,9 +4,9 @@ function Defer(fn){
 		throw new Error('please add "new" keyword ');
 	}
 	this.thenCache = [];//{resolve:,reject:,notify:}
-	this.catchCache = [];
-	this.doneFn = null;
-	this.finallyCache = null;
+	this.errorHandle = null;
+	this.doneHandle = null;
+	this.errorHandle = null;
 	this.status = 'pendding';
 	this.value = undefined;
 	setTimeout(fn.bind(this, this.resolve.bind(this), this.reject.bind(this), this.notify.bind(this) ), 0);
@@ -16,8 +16,7 @@ function Defer(fn){
 Defer.prototype.resolve = function(value){
 	this.status = 'resolve';
 	this.value = value;
-	this.triggerThenParam();
-	return this;
+	this.triggerThen();
 }
 
 
@@ -25,24 +24,17 @@ Defer.prototype.resolve = function(value){
 Defer.prototype.reject = function(value){
 	this.status = 'reject';
 	this.value = value;
-	this.triggerThenParam();
-	return this;
+	this.triggerThen();
 }
 
 
-Defer.prototype.notify = function(value){
-	this.status = 'notify';
-	this.value = value;
-	this.triggerThenParam();
-	return this;
-}
-
-
-
+/**
+  终结then链
+*/
 Defer.prototype.done = function(fn){
-	this.status = 'done';
-	this.value = value;
-	this.doneFn = fn;
+	if(typeof fn === 'function'){
+		this.doneHandle = fn;
+	}
 }
 
 
@@ -53,9 +45,9 @@ Defer.prototype.then = function(resolve,reject,notify){
 }
 
 
-Defer.prototype.triggerThenParam = function(){
+Defer.prototype.triggerThen = function(){
 	var current = this.thenCache.shift();
-	var res  = undefined;
+	var res = null;
 	if(!current){
 		return this;
 	}
@@ -63,30 +55,33 @@ Defer.prototype.triggerThenParam = function(){
 		res = current.resolve;
 	}else if(this.status === 'reject'){
 		res = current.reject;
-	}else if(this.status === 'notify'){
-		res = current.notify;
 	}
 
-	var temp = undefined;
-	if(res){
-		temp = res.call(this, this.value);
-		this.triggerThenParam();
-		//else this.doneFn(null);
-	}else{
-		var err = this.catchCache.shift();
-		if(err)
-			err.call(this, new Error('function not found'));
+	if(typeof res === 'function'){
+		try{
+			this.value = res.call(undefined, this.value);//重置promise的value
+			this.triggerThen();//继续执行then链
+		}catch(e){
+			this.errorHandle.call()
+		}
+	}else{//不是函数则忽略
+		this.triggerThen();
 	}
-	return this;
 }
 
 
 Defer.prototype.catch = function(fn){
-	this.catchCache.push(fn);
+	if(typeof fn === 'function'){
+		this.errorHandle = fn ;
+	}else{
+		this.errorHandle = null;
+	}
 }
 
-
-
 Defer.prototype.finally = function(fn){
-	this.finallyCache = fn;
+	if(typeof fn === 'function'){
+		this.finalHandle = fn ;
+	}else{
+		this.finalHandle = null;
+	}
  }
