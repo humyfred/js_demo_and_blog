@@ -1,7 +1,6 @@
-function Defer(executor){
-
-	if(!(this instanceof Defer)){
-    throw 'constructor Defer should use "new" keyword';
+  function Defer(executor){
+    if(!(this instanceof Defer)){
+    	throw 'constructor Defer should use "new" keyword';
   }
 
   if(typeof executor !== 'function'){
