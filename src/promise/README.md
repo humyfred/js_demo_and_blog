@@ -1,10 +1,10 @@
 # 手写一款 Promise
 
-Promise 对象是用来处理异步操作的工具,解决开发者对异步回调的烦恼。可以说Promise是个代理对象，在设计模式来讲就是代理模式，它代理了一个值，并且设置了几个状态让用户知道当前代理值解析的结果。而笔者此次按照Promise/A＋ 的规范要求，自己尝试做了一款Promise。
+Promise 对象是用来处理异步操作的工具,解决开发者对异步回调的烦恼。可以说Promise是个代理对象，在设计模式来讲就是代理模式，它代理了一个值（通过resolve方法传递的值），并且设置了几个状态让用户知道当前代理值解析的结果。而笔者此次按照Promise/A＋ 的规范要求，自己尝试做了一款简化版的Promise。
 
 # 开发步骤
 
-我们每一步按照Promsie/A＋层层的规范编写Promise，以便理解Promise处理过程。
+我们每一步按照Promise/A＋层层的规范编写Promise，以便理解Promise处理过程。
 
 为了避免与浏览器中的Promise函数冲突，此次用Defer代替Promise:
 ```html
@@ -14,7 +14,7 @@ function Defer(){
 ```
 
 ## 1.Promise 参数 executor
-当新建一个promise必会自带一个executor函数，其形参包含Promise传递的resolve，reject两个方法，分别表示代理的值解析成功并传递值，代理的值解析失败并传失败原因。代码如下：
+当新建一个promise必会自带一个executor函数，其形参包含Promise传递的resolve，reject两个方法，分别表示将要代理的值解析成功并传递值，代理的值解析失败并传失败原因。而如果executor在执行过程中出错，则promise立即被拒绝（调用reject），代码如下：
 ```html
 function Defer(executor){
   if(!(this instanceof Defer)){
@@ -24,9 +24,9 @@ function Defer(executor){
     throw 'Defer params should be a function';
   }
   try{
-    executor.call(this, this.resolve.bind(this), this.reject.bind(this));
+    executor.call(this, this.resolve.bind(this), this.reject.bind(this));//传递resolve，reject方法
   }catch(e){
-    this.reject('executor error');
+    this.reject(e);
   }
 }
 
@@ -46,7 +46,9 @@ Defer.prototype = {
 按照规范，Promise有三种状态：
 
 pending: 初始状态,未完成或拒绝，可改变状态。
+
 fulfilled（resolved）: 操作成功完成,不可改变状态,拥有不可变的终值。
+
 rejected: 操作失败,不可改变状态,拥有不可变的拒因。
 
 为了记录当前Promise状态我们需要用一个属性缓存起来：
@@ -58,9 +60,7 @@ function Defer(executor){
   ...省略...
 }
 ```
-
-而相应的resolve，reject方法内部要修改当前proimse状态：
-
+而相应的resolve，reject方法内部要修改当前promise状态：
 ```html
 Defer.prototype = {
   constructor ： Defer,
@@ -79,7 +79,7 @@ Defer.prototype = {
 
 ### 3.1简要
 
-promise/A＋规范提出通过then方法访问当前Promise的代理值，并且可被同一个promise调用多次，最后函数返回promise对象。
+promise/A＋规范提出通过then方法访问当前Promise的代理值，并且可被同一个promise调用多次，最后函数返回新的promise对象。
 所以Defer函数需加上then函数：
 
 ```html
@@ -189,9 +189,49 @@ Defer.prototype = {
  ...
 ```
 
+## 4 测试
+```html
+ function test(){
+   return new Defer(function(res,rej){
+     setTimeout(function(){
+       res(1);
+     },1000);
+   });
+ }
 
-## 使用
+ test().then(function(value){
+   console.log('then 1', value);
+   return value;
+ }).then(function(value){
+   console.log('then 2', value);
+ }).catch(function(e){
+   console.log('error',e);
+ });
 
+
+ function test2(){
+   return new Defer(function(res,rej){
+     setTimeout(function(){
+       rej(1);
+     },1000);
+   });
+ }
+
+ test2().then(function(value){
+   console.log('then 1', value);
+   return value;
+ }).then(function(value){
+   console.log('then 2', value);
+ }).catch(function(e){
+   console.log('error',e);
+ });
+```
+
+
+## 5 小结
+一个简单版的Promise就大功告成，可能文中对Promise／A＋规范描述还不够详细，还有其他理论并没有过多描述，请大家多多包涵；本次是以练习为主，学习Promise概念核心思想，并通过代码实现，以提高编码能力。对于理解本次Promise代码，最关键还是需要好好理解浏览器事件循环（Event loop）的过程，即Promise是先同步处理then、catch函数再异步处理executor函数。
+
+下一篇还会继续讲下此次Promise简化版中的不足。
 
 ### 参考文献
 
