@@ -90,7 +90,7 @@ then : function(){
 ```
 
 
-### 函数的参数：
+### 3.2函数的参数：
 
 onFulfilled：可选参数，如果不是函数则必须忽略;
 onRejected：可选参数，如果不是函数则必须忽略
@@ -108,12 +108,13 @@ then : function(onFulfilled, onRejected){
 ...
 ```
 
-### 3.2函数参数调用时期和要求：
-onFulfilled 和 onRejected必须作为纯函数调用并且promise内部executor函数执行完返回promise对象后才可执行。
-这里包含两个点:
-第一两个函数必须作为纯函数调用，所谓纯函数调用我认为是函数调用时，不通过OOP思想封装成Object并调用Object里函数方法，不用call、apply、bind改变this指向，而是单纯调用函数并且this的值是undefined（严格模式才会如此，非严格模式this指向window）；
-第二等待executor函数执行完毕才可调用then函数的参数，我们知道executor内部很多情况下是异步操作，而我们使用promise对象的then方法是与创建promise对象在同一个“执行环境栈”中，所以then方法不可能直接执行其内部参数，而通过promise内容缓存系统存储onFulfilled 和 onRejected，并在executor异步操作完毕再执行。
+### 3.3函数参数调用时期和要求：
+onFulfilled 和 onRejected必须作为纯函数调用并且promise内部executor函数执行完返回promise对象后才可执行then方法。这里包含两个点:
 
+第一，两个函数必须作为纯函数调用。所谓纯函数调用我认为是函数调用时，不通过OOP思想封装成Object并调用Object里函数方法，不用call、apply、bind改变this指向，而是单纯调用函数并且this的值是undefined（严格模式才会如此，非严格模式this指向window）；
+
+第二，等待executor函数执行完毕才可调用then函数的参数。我们知道executor内部很多情况下会有异步操作，而我们调用then方法与创建promise对象在同一个“执行上下文”当中的，显然then方法不可能在创建promise对象之后立即执行其onFulfilled 或 onRejected，而是通过promise内部缓存系统存储onFulfilled 和 onRejected，并在executor操作完毕再执行then的参数。
+所以then的代码应该是这样写：
 ```html
 ...
 then : function (onFulfilled, onRejected){
@@ -122,9 +123,36 @@ then : function (onFulfilled, onRejected){
 ...
 ```
 
-### 3.3then多次调用：
-then可以被同一个promise对象多次调用，为了达到效果，then方法最后必须返回当前promise对象:
+最重要的是，executor函数内部异步执行之后是如何触发then参数的？大家可以思考一下。。。
 
+
+
+
+
+
+
+我们可以回看下promise/A+的规范要求，executor方法会有三个参数：resolve，reject，notify，都是处理promise状态，并且设置prmose的value值；我们可以借用这两个方法来调用then参数，代码如下：
+```html
+...
+resolve : function(value){
+  this.status = 'fulfilled';
+  this.value = value;//promise的值
+  this.triggerThenParam();//触发then参数
+},
+reject : function(value){
+  this.status = 'rejected';
+  this.value = value;
+  this.triggerThenParam();
+},
+triggerThenParam : function(){
+  ...
+}
+...
+```
+
+
+### 3.4then多次调用：
+then可以被同一个promise对象多次调用，为了达到效果，then方法最后必须返回当前promise对象:
 ```html
  ...
  then : function (onFulfilled, onRejected){
@@ -134,9 +162,15 @@ then可以被同一个promise对象多次调用，为了达到效果，then方�
  ...
 ```
 
-### 3.4代码合并
+### 3.5代码合并
 
 ```html
+
+function Defer（executor){
+  this.status = 'pending';
+  this.thenCache = [];
+}
+
 Defer.prototype = {
   constructor ： Defer,
   resolve : function(){
