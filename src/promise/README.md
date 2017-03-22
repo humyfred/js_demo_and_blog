@@ -1,4 +1,4 @@
-# Promise
+# 手写一款 Promise
 
 Promise 对象是用来处理异步操作,解决开发者对多层回调的烦恼,而笔者此次按照Promise／A＋ 的规范要求，自己尝试做了一款Promise。
 
@@ -47,7 +47,7 @@ pending: 初始状态, 初始状态，未完成或拒绝。
 fulfilled: 意味着操作成功完成。
 rejected: 意味着操作失败。
 
-为了纪录当前Promise状态我们需要用一个属性缓存起来：
+为了记录当前Promise状态我们需要用一个属性缓存起来：
 
 ```html
 function Defer（executor){
@@ -74,9 +74,9 @@ Defer.prototype = {
 ```
 
 
-## 3.then(onFulfilled, onRejected)
+## 3.then(onFulfilled, onRejected)重要部分
 
-### 简要
+### 3.1简要
 
 promise／A＋ 规范提出需提供then方法访问当前值，终值，最后函数返回当前promise对象。
 所以Defer函数需加上then函数：
@@ -87,7 +87,7 @@ then : function(){
 
 },
 ...
-```html
+```
 
 
 ### 函数的参数：
@@ -108,8 +108,11 @@ then : function(onFulfilled, onRejected){
 ...
 ```
 
-### 函数参数调用时期和要求：
-onFulfilled 和 onRejected必须作为纯函数调用并且promise内部executor函数执行完返回promise对象后才可执行。这里包含两个点，第一两个函数必须作为纯函数调用，所谓纯函数调用我认为是函数调用时，不通过OOP思想封装成Object并调用Object里函数方法，不用call、apply、bind改变this指向，单纯调用函数并且this的值是undefined（严格模式才会如此，非严格模式this指向window）；第二等待executor函数执行完毕才可调用then函数的参数，我们知道executor内部很多情况下是异步操作，而我们使用promise对象的then方法是与创建promise对象在同一个“执行环境栈”中，所以then方法不可能直接执行其内部参数，而通过promise内容缓存系统存储onFulfilled 和 onRejected，并在executor异步操作完毕再执行。
+### 3.2函数参数调用时期和要求：
+onFulfilled 和 onRejected必须作为纯函数调用并且promise内部executor函数执行完返回promise对象后才可执行。
+这里包含两个点:
+第一两个函数必须作为纯函数调用，所谓纯函数调用我认为是函数调用时，不通过OOP思想封装成Object并调用Object里函数方法，不用call、apply、bind改变this指向，而是单纯调用函数并且this的值是undefined（严格模式才会如此，非严格模式this指向window）；
+第二等待executor函数执行完毕才可调用then函数的参数，我们知道executor内部很多情况下是异步操作，而我们使用promise对象的then方法是与创建promise对象在同一个“执行环境栈”中，所以then方法不可能直接执行其内部参数，而通过promise内容缓存系统存储onFulfilled 和 onRejected，并在executor异步操作完毕再执行。
 
 ```html
 ...
@@ -119,8 +122,8 @@ then : function (onFulfilled, onRejected){
 ...
 ```
 
-### then多次调用：
-then可以被同一个promise对象多次调用，为了达到效果，then方法必须返回当前promise对象:
+### 3.3then多次调用：
+then可以被同一个promise对象多次调用，为了达到效果，then方法最后必须返回当前promise对象:
 
 ```html
  ...
@@ -131,7 +134,7 @@ then可以被同一个promise对象多次调用，为了达到效果，then方�
  ...
 ```
 
-### 代码合并
+### 3.4代码合并
 
 ```html
 Defer.prototype = {
