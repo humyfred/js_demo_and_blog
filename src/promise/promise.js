@@ -16,7 +16,7 @@ function Defer(fn){
 Defer.prototype.resolve = function(value){
 	this.status = 'resolve';
 	this.value = value;
-	this.doing(value);
+	this.triggerThenParam();
 	return this;
 }
 
@@ -25,7 +25,7 @@ Defer.prototype.resolve = function(value){
 Defer.prototype.reject = function(value){
 	this.status = 'reject';
 	this.value = value;
-	this.doing(value);
+	this.triggerThenParam();
 	return this;
 }
 
@@ -33,7 +33,7 @@ Defer.prototype.reject = function(value){
 Defer.prototype.notify = function(value){
 	this.status = 'notify';
 	this.value = value;
-	this.doing(value);
+	this.triggerThenParam();
 	return this;
 }
 
@@ -53,13 +53,12 @@ Defer.prototype.then = function(resolve,reject,notify){
 }
 
 
-Defer.prototype.doing = function(value){
+Defer.prototype.triggerThenParam = function(){
 	var current = this.thenCache.shift();
 	var res  = undefined;
 	if(!current){
 		return this;
 	}
-	this.value = value;
 	if(this.status === 'resolve'){
 		res = current.resolve;
 	}else if(this.status === 'reject'){
@@ -70,8 +69,8 @@ Defer.prototype.doing = function(value){
 
 	var temp = undefined;
 	if(res){
-		temp = res.call(this, value);
-		this.doing(temp);
+		temp = res.call(this, this.value);
+		this.triggerThenParam();
 		//else this.doneFn(null);
 	}else{
 		var err = this.catchCache.shift();
