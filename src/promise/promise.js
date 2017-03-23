@@ -10,7 +10,7 @@ function Defer(executor){
 	this.thenCache = [];//{resolve:,reject:}
 	this.errorHandle = null;
 	this.status = 'pendding';
-	this.value = undefined;
+	this.value = null;
 	this.rejectReason = null;
 	var self = this;
 	setTimeout(function(){
@@ -52,11 +52,11 @@ Defer.prototype.triggerThen = function(){
 	var res = null;
 
 	if(!current && this.status === 'resolved'){//成功解析并读取完then cache
-		return this;
+		return ;
 	}else if(!current && this.status === 'rejected'){//解析失败并读取完then cache，直接调用errorHandle
 		if(this.errorHandle)
 			this.value = this.errorHandle.call(undefined, this.rejectReason);
-		return this;
+		return ;
 	};
 
 	if(this.status === 'resolved'){
@@ -72,7 +72,7 @@ Defer.prototype.triggerThen = function(){
 		}catch(e){
 			if(this.errorHandle)
 				this.value = this.errorHandle.call(undefined, e);
-			return this;
+			return ;
 		}
 	}else{//不是函数则忽略
 		this.triggerThen();
