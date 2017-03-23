@@ -1,16 +1,16 @@
 function Defer(executor){
   if(!(this instanceof Defer)){
-    	throw 'constructor Defer should use "new" keyword';
+    	throw 'Defer is a constructor and should be called width "new" keyword';
   }
 
   if(typeof executor !== 'function'){
-    throw 'Defer params should be a function';
+    throw 'Defer params must be a function';
   }
 
 	this.thenCache = [];//{resolve:,reject:}
 	this.errorHandle = null;
 	this.status = 'pendding';
-	this.value = undefined;
+	this.value = null;
 	this.rejectReason = null;
 	var self = this;
 	setTimeout(function(){
@@ -30,7 +30,7 @@ Defer.prototype.resolve = function(value){
 	this.status = 'resolved';
 	this.value = value;
 	this.triggerThen();
-}
+};
 
 
 
@@ -38,13 +38,13 @@ Defer.prototype.reject = function(reason){
 	this.status = 'rejected';
 	this.rejectReason = reason;
 	this.triggerThen();
-}
+};
 
 Defer.prototype.then = function(resolve,reject){
 	var todo = {resolve:resolve,reject:reject};
 	this.thenCache.push(todo);
 	return this;
-}
+};
 
 
 Defer.prototype.triggerThen = function(){
@@ -52,12 +52,12 @@ Defer.prototype.triggerThen = function(){
 	var res = null;
 
 	if(!current && this.status === 'resolved'){//成功解析并读取完then cache
-		return this;
-	}else if(this.status === 'rejected'){//解析失败
+		return ;
+	}else if(!current && this.status === 'rejected'){//解析失败并读取完then cache，直接调用errorHandle
 		if(this.errorHandle)
 			this.value = this.errorHandle.call(undefined, this.rejectReason);
-		return this;
-	}
+		return ;
+	};
 
 	if(this.status === 'resolved'){
 		res = current.resolve;
@@ -72,12 +72,12 @@ Defer.prototype.triggerThen = function(){
 		}catch(e){
 			if(this.errorHandle)
 				this.value = this.errorHandle.call(undefined, e);
-			return this;
+			return ;
 		}
 	}else{//不是函数则忽略
 		this.triggerThen();
 	}
-}
+};
 
 
 Defer.prototype.catch = function(fn){
@@ -90,4 +90,4 @@ Defer.prototype.catch = function(fn){
 	}else{
 		this.errorHandle = null;
 	}
-}
+};
