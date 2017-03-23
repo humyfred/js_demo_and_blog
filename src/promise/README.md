@@ -107,7 +107,7 @@ new promise().then(fn).then(fn).then(fn).....
 
 第一，两个函数必须作为纯函数调用。所谓纯函数调用我认为是函数调用时，不通过OOP思想封装成Object并调用Object里函数方法（this会指向该Object），不用call、apply、bind改变this指向，而是单纯调用函数并且this的值是undefined（严格模式才会如此，非严格模式this指向window）；则代码应是这样(示例)：
 ```html
-**onFulfilled.call(undefined, promise_value);**
+onFulfilled.call(undefined, promise_value);
 ```
 
 第二，等待executor函数执行完毕才可调用then函数的参数。我们知道executor内部很多情况下会有异步操作，而我们调用then方法与创建promise对象在同一个“执行上下文”当中的(从api调用示例可知)，显然then方法不可能在创建promise对象之后立即执行其onFulfilled 或 onRejected，而是通过promise内部缓存存储onFulfilled 和 onRejected，并在executor操作完毕得到promise代理的值后返回给then的参数。而executor函数如果在promise下面直接调用，则会比then方法
@@ -116,7 +116,7 @@ new promise().then(fn).then(fn).then(fn).....
 ```html
 ...
 then : function (onFulfilled, onRejected){
- **this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected});**
+ this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected});
 },
 ...
 ```
@@ -137,15 +137,15 @@ function Defer(executor){
 	this.value = undefined;
 	this.rejectReason = null;
 	var self = this;
-	**setTimeout(function(){**//**异步执行executor**
+	setTimeout(function(){//异步执行executor
 
-  **	try{**
+  	try{
     	executor.call(self, self.resolve.bind(self), self.reject.bind(self));//传递resolve，reject方法
-  **	}catch(e){**
+  	}catch(e){
     	self.reject(e);
-  **	}**
+  	}
 
-	** }, 0);**
+	 }, 0);
 
 }
 ```
@@ -159,12 +159,12 @@ function Defer(executor){
 resolve : function(value){
   this.status = 'fulfilled';
   this.value = value;//promise的值
-  **this.triggerThen();**//触发then参数
+  this.triggerThen();//触发then参数
 },
 reject : function(reason){
   this.status = 'rejected';
   this.reason = reason;
-  **this.triggerThen();**
+  this.triggerThen();
 },
 then : function (onFulfilled, onRejected){
  this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected});
@@ -228,11 +228,11 @@ Defer.prototype.triggerThen = function(){
 
 	if(!current && this.status === 'resolved'){//成功解析并读取完then cache
 		return this;
-	**}else if(this.status === 'rejected'){//解析失败**
-	**	if(this.errorHandle)**
-	**		this.value = this.errorHandle.call(undefined, this.rejectReason);**
-	**	return this;**
-	**};**
+	}else if(this.status === 'rejected'){//解析失败
+		if(this.errorHandle)
+			this.value = this.errorHandle.call(undefined, this.rejectReason);
+		return this;
+	};
 
 	if(this.status === 'resolved'){
 		res = current.resolve;
@@ -244,11 +244,11 @@ Defer.prototype.triggerThen = function(){
 		try{
 			this.value = res.call(undefined, this.value);//重置promise的value
 			this.triggerThen();//继续执行then链
-		**}catch(e){**
-		**	if(this.errorHandle)**
-		**		this.value = this.errorHandle.call(undefined, e);**
-		**	return this;**
-		**}**
+		}catch(e){
+			if(this.errorHandle)
+				this.value = this.errorHandle.call(undefined, e);
+			return this;
+		}
 	}else{//不是函数则忽略
 		this.triggerThen();
 	}
