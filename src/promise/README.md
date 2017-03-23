@@ -127,7 +127,7 @@ then : function (onFulfilled, onRejected){//只做缓存作用
 ```html
 function Defer(executor){
   if(!(this instanceof Defer)){
-    	throw 'constructor Defer should use "new" keyword';
+    throw 'constructor Defer should use "new" keyword';
   }
 
   if(typeof executor !== 'function'){
@@ -141,11 +141,11 @@ function Defer(executor){
 	var self = this;
 	setTimeout(function(){//把executor的call任务插入到Event Loop的消息队列去，以异步执行executor，避免与then方法同步
 
-  	try{
-    	executor.call(self, self.resolve.bind(self), self.reject.bind(self));
-  	}catch(e){
-    	self.reject(e);
-  	}
+  try{
+    executor.call(self, self.resolve.bind(self), self.reject.bind(self));
+  }catch(e){
+    self.reject(e);
+  }
 
 	 }, 0);
 }
