@@ -53,7 +53,7 @@ Defer.prototype.triggerThen = function(){
 
 	if(!current && this.status === 'resolved'){//成功解析并读取完then cache
 		return this;
-	}else if(this.status === 'rejected'){//解析失败
+	}else if(!current && this.status === 'rejected'){//解析失败并读取完then cache，直接调用errorHandle
 		if(this.errorHandle)
 			this.value = this.errorHandle.call(undefined, this.rejectReason);
 		return this;
