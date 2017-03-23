@@ -22,7 +22,7 @@ function Defer(executor){
   	}
 
 	 }, 0);
-
+  return this;
 }
 
 
@@ -52,11 +52,13 @@ Defer.prototype.triggerThen = function(){
 	var res = null;
 
 	if(!current && this.status === 'resolved'){//成功解析并读取完then cache
-		return ;
+		return this;
 	}else if(!current && this.status === 'rejected'){//解析失败并读取完then cache，直接调用errorHandle
-		if(this.errorHandle)
-			this.value = this.errorHandle.call(undefined, this.rejectReason);
-		return ;
+		if(this.errorHandle){
+      this.value = this.errorHandle.call(undefined, this.rejectReason);
+      this.status= 'resolved';
+    }
+		return this;
 	};
 
 	if(this.status === 'resolved'){
@@ -68,11 +70,19 @@ Defer.prototype.triggerThen = function(){
 	if(typeof res === 'function'){
 		try{
 			this.value = res.call(undefined, this.value);//重置promise的value
+      this.status = 'resolved';
 			this.triggerThen();//继续执行then链
 		}catch(e){
-			if(this.errorHandle)
-				this.value = this.errorHandle.call(undefined, e);
-			return ;
+      this.status = 'rejected';
+      if(this.thenCache.length > 0 ){
+        this.status = 'resolved';
+        this.triggerThen();
+      }
+			if(this.errorHandle){
+        this.value = this.errorHandle.call(undefined, e);
+        this.status = 'resolved';
+      }
+			return this;
 		}
 	}else{//不是函数则忽略
 		this.triggerThen();

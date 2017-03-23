@@ -102,6 +102,7 @@ then : function(onFulfilled, onRejected){
 
  (5) promise的executor执行完毕并调用resolve或reject方可调用then参数onFulfilled 和 onRejected。
 
+ (6) 无论上一次promise状态是resolved还是rejected，只要还有未执行then或catch（只处理reject状态）存在且做了处理，返回的promise均为resolved；
 #### api调用示例
 ```html
 new promise().then(fn).then(fn).then(fn).....
@@ -191,6 +192,7 @@ Defer.prototype.triggerThen = function(){
 
 	if(typeof res === 'function'){//规则(1)(2)
 		this.value = res.call(undefined, this.value);//重置promise的value，规则(4)
+    this.status = 'resolved';//规则(6)
 		this.triggerThen();//继续执行then链
 	}else{//不是函数则忽略
 		this.triggerThen();//规则(1)(2)
@@ -220,8 +222,10 @@ Defer.prototype.triggerThen = function(){
 	if(!current && this.status === 'resolved'){//成功解析并读取完then cache
 		return this;
 	}else if(!current && this.status === 'rejected'){//解析失败，并读取完then cache,直接调用errorHandle
-		if(this.errorHandle)
-			this.value = this.errorHandle.call(undefined, this.rejectReason);//处理异常部分
+		if(this.errorHandle){
+      this.status = 'resolved';//catch处理后改为resolved
+      this.value = this.errorHandle.call(undefined, this.rejectReason);//处理异常部分
+    }
 		return this;
 	};
 
@@ -234,11 +238,15 @@ Defer.prototype.triggerThen = function(){
 	if(typeof res === 'function'){
 		try{
 			this.value = res.call(undefined, this.value);//重置promise的value
+      this.status＝ 'resolved';
 			this.triggerThen();//继续执行then链
 		}catch(e){//处理异常部分
-			if(this.errorHandle)
+      this.status＝ 'rejected';//异常则自动设为rejected
+			if(this.errorHandle)｛
+        this.status = 'resolved';//catch处理后改为resolved
 				this.value = this.errorHandle.call(undefined, e);
-			return this;
+      ｝
+      return this;
 		}
 	}else{//不是函数则忽略
 		this.triggerThen();
@@ -286,8 +294,8 @@ Defer.prototype.triggerThen = function(){
    console.log('error',e);
  });
  //结果:
- //reject then 1
- //reject then 2
+ //reject then 1 1
+ //reject then 2 1
  //error 1
 
  test2().then(null, function(value){
