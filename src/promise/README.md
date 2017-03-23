@@ -305,7 +305,7 @@ Defer.prototype.triggerThen = function(){
 
 
 ## 5 小结
-一个简单版的Promise就大功告成，可能本文对Promise／A＋规范描述还不够详细，还有其他理论并没有过多描述，甚至有些理论有出入（比如then返回的是新的对象），请大家多多包涵；本次是以练习为主，学习Promise概念的核心思想，并通过代码实现，提高编码能力。对于理解本次Promise代码，最关键还是需要好好理解浏览器的事件循环（Event loop），一句话即Promise是先同步处理then、catch函数再异步处理executor函数，接着通过resolve或reject触发then、catch的参数。
+一个简单版的Promise就大功告成，可能本文对Promise／A＋规范描述还不够详细，还有其他理论并没有过多描述，甚至有些理论有出入（比如then返回的本是新的Promise对象），请大家多多包涵；本次是简化了一些，以练习为主，学习Promise概念的核心思想，并通过代码实现，提高编码能力。对于理解本次Promise代码，最关键还是需要好好理解浏览器的事件循环（Event loop），一句话即Promise是先同步处理then、catch函数再异步处理executor函数，接着通过resolve或reject触发then、catch的参数。
 
 另外笔者埋了一个坑，Defer对象在resolve或reject函数调用之后已成settled状态（reject 或 reject），此时状态不能改变，而本次代码Defer本身自带了resolve和reject函数，是随时可改变自身状态，大家可以想像一下如何实现。可以参考Jquery的Deffered或者GitHub上的Q模块，两个实现的思路是一样。
 
