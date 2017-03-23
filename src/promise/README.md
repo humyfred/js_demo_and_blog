@@ -25,7 +25,7 @@ function Defer(executor){
   }
   try{
     executor.call(this, this.resolve.bind(this), this.reject.bind(this));//传递resolve，reject方法
-  }catch(e){
+  }catch(e){//报错立即拒绝
     this.reject(e);
   }
 }
@@ -84,67 +84,97 @@ promise/A＋规范提出通过then方法访问当前Promise的代理值，并且
 
 ```html
 ...
-then : function(){
+then : function(onFulfilled, onRejected){
   return this;
 },
 ...
 ```
 
+### 3.2then参数的调用时期和要求：
 
-### 3.2函数的参数：
+（1）onFulfilled(onResolved)：可选参数，如果不是函数则必须忽略;
 
-onFulfilled(onResolved)：可选参数，如果不是函数则必须忽略;
-onRejected：可选参数，如果不是函数则必须忽略
+（2）onRejected：可选参数，如果不是函数则必须忽略;
 
+（3）当promise成功执行，所有onFulfilled按注册顺序执行，如果promise被拒绝，所有onRejected按注册顺序执行；
+
+（4）onFulfilled 和 onRejected必须作为纯函数调用并且promise内部executor函数执行完返回promise对象后才可执行then方法。这里包含两个点:
+
+#### api调用示例
 ```html
-...
-then : function(onResolved, onRejected){
-  if(typeof onResolved === 'function'){
-    ...
-  }
-  if(typeof onRejected === 'function'){
-    ...
-  }
-},
-...
+new promise().then(fn).then(fn).then(fn).....
 ```
 
-### 3.3函数参数调用时期和要求：
-onFulfilled 和 onRejected必须作为纯函数调用并且promise内部executor函数执行完返回promise对象后才可执行then方法。这里包含两个点:
+第一，两个函数必须作为纯函数调用。所谓纯函数调用我认为是函数调用时，不通过OOP思想封装成Object并调用Object里函数方法（this会指向该Object），不用call、apply、bind改变this指向，而是单纯调用函数并且this的值是undefined（严格模式才会如此，非严格模式this指向window）；则代码应是这样(示例)：
+```html
+**onFulfilled.call(undefined, promise_value);**
+```
 
-第一，两个函数必须作为纯函数调用。所谓纯函数调用我认为是函数调用时，不通过OOP思想封装成Object并调用Object里函数方法，不用call、apply、bind改变this指向，而是单纯调用函数并且this的值是undefined（严格模式才会如此，非严格模式this指向window）；
+第二，等待executor函数执行完毕才可调用then函数的参数。我们知道executor内部很多情况下会有异步操作，而我们调用then方法与创建promise对象在同一个“执行上下文”当中的(从api调用示例可知)，显然then方法不可能在创建promise对象之后立即执行其onFulfilled 或 onRejected，而是通过promise内部缓存存储onFulfilled 和 onRejected，并在executor操作完毕得到promise代理的值后返回给then的参数。而executor函数如果在promise下面直接调用，则会比then方法
 
-第二，等待executor函数执行完毕才可调用then函数的参数。我们知道executor内部很多情况下会有异步操作，而我们调用then方法与创建promise对象在同一个“执行上下文”当中的，显然then方法不可能在创建promise对象之后立即执行其onFulfilled 或 onRejected，而是通过promise内部缓存系统存储onFulfilled 和 onRejected，并在executor操作完毕再执行then的参数。
 所以then的代码应该是这样写：
 ```html
 ...
 then : function (onFulfilled, onRejected){
- this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected}); /** 这里已经取消掉**/
+ **this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected});**
 },
 ...
+```
+
+Defer的代码应该是这样写：
+```html
+function Defer(executor){
+  if(!(this instanceof Defer)){
+    	throw 'constructor Defer should use "new" keyword';
+  }
+
+  if(typeof executor !== 'function'){
+    throw 'Defer params should be a function';
+  }
+
+	this.thenCache = [];//{resolve:,reject:}
+	this.status = 'pendding';
+	this.value = undefined;
+	this.rejectReason = null;
+	var self = this;
+	**setTimeout(function(){**//**异步执行executor**
+
+  **	try{**
+    	executor.call(self, self.resolve.bind(self), self.reject.bind(self));//传递resolve，reject方法
+  **	}catch(e){**
+    	self.reject(e);
+  **	}**
+
+	** }, 0);**
+
+}
 ```
 
 最重要的是，executor函数内部异步执行之后是如何触发then参数的？大家可以思考一下。。。
 
 
-我们可以回看下promise/A+的规范要求，executor方法会有两个参数：resolve，reject，都是处理promise状态，并设置promise的value值；我们可以借用这两个方法来调用then参数，代码如下：
+我们可以回看下promise/A+的规范要求，executor方法会有两个参数：resolve，reject，都是处理promise状态，并设置promise的value值；我们可以借用这两个方法来调用then参数，把（1）、（2）条规则判断下放到triggerThen处理代码如下：
 ```html
 ...
 resolve : function(value){
   this.status = 'fulfilled';
   this.value = value;//promise的值
-  this.triggerThen();//触发then参数
+  **this.triggerThen();**//触发then参数
 },
-reject : function(value){
+reject : function(reason){
   this.status = 'rejected';
-  this.value = value;
-  this.triggerThen();
+  this.reason = reason;
+  **this.triggerThen();**
+},
+then : function (onFulfilled, onRejected){
+ this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected});
 },
 triggerThen : function(){
   ...
 }
 ...
 ```
+### 3.5 triggerThen 处理
 
 
 ### 3.5代码合并
@@ -179,7 +209,7 @@ Defer.prototype = {
 
 
 ## 4 异常处理
-当promise在处理过程中出现问题，可能是代码出错，可能是throw抛出了异常，其处理的方式和then一样，都在代码如下：
+当promise在处理过程中出现问题，可能是代码出错，可能是throw抛出了异常，其处理的方式和then一样，缓存异常处理函数，在triggerThen函数中根据都在代码如下：
 ```html
  ...
  catch : function (onFulfilled, onRejected){
@@ -187,6 +217,42 @@ Defer.prototype = {
   return this;
  },
  ...
+```
+
+
+triggerThen处理异常代码如下：
+```html
+Defer.prototype.triggerThen = function(){
+	var current = this.thenCache.shift();
+	var res = null;
+
+	if(!current && this.status === 'resolved'){//成功解析并读取完then cache
+		return this;
+	**}else if(this.status === 'rejected'){//解析失败**
+	**	if(this.errorHandle)**
+	**		this.value = this.errorHandle.call(undefined, this.rejectReason);**
+	**	return this;**
+	**};**
+
+	if(this.status === 'resolved'){
+		res = current.resolve;
+	}else if(this.status === 'rejected'){
+		res = current.reject;
+	}
+
+	if(typeof res === 'function'){
+		try{
+			this.value = res.call(undefined, this.value);//重置promise的value
+			this.triggerThen();//继续执行then链
+		**}catch(e){**
+		**	if(this.errorHandle)**
+		**		this.value = this.errorHandle.call(undefined, e);**
+		**	return this;**
+		**}**
+	}else{//不是函数则忽略
+		this.triggerThen();
+	}
+};
 ```
 
 ## 4 测试
@@ -229,9 +295,12 @@ Defer.prototype = {
 
 
 ## 5 小结
-一个简单版的Promise就大功告成，可能文中对Promise／A＋规范描述还不够详细，还有其他理论并没有过多描述，请大家多多包涵；本次是以练习为主，学习Promise概念核心思想，并通过代码实现，以提高编码能力。对于理解本次Promise代码，最关键还是需要好好理解浏览器事件循环（Event loop）的过程，即Promise是先同步处理then、catch函数再异步处理executor函数。
+一个简单版的Promise就大功告成，可能本文对Promise／A＋规范描述还不够详细，还有其他理论并没有过多描述，请大家多多包涵；本次是以练习为主，学习Promise概念的核心思想，并通过代码实现，提高编码能力。对于理解本次Promise代码，最关键还是需要好好理解浏览器的事件循环（Event loop），一句话即Promise是先同步处理then、catch函数再异步处理executor函数，接着resolve或reject触发then、catch的参数。
 
-下一篇还会继续讲下此次Promise简化版中的不足。
+下一篇会讲下此次Promise简化版中的不足，笔者埋了几个坑，大家可以先思考哪里出了问题~~。
+
+完整的源码点击这里：https://github.com/humyfred/js_demo/blob/master/src/promise/promise.js
+
 
 ### 参考文献
 

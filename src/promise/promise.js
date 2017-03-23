@@ -1,5 +1,5 @@
-  function Defer(executor){
-    if(!(this instanceof Defer)){
+function Defer(executor){
+  if(!(this instanceof Defer)){
     	throw 'constructor Defer should use "new" keyword';
   }
 
@@ -30,7 +30,7 @@ Defer.prototype.resolve = function(value){
 	this.status = 'resolved';
 	this.value = value;
 	this.triggerThen();
-}
+};
 
 
 
@@ -38,13 +38,13 @@ Defer.prototype.reject = function(reason){
 	this.status = 'rejected';
 	this.rejectReason = reason;
 	this.triggerThen();
-}
+};
 
 Defer.prototype.then = function(resolve,reject){
 	var todo = {resolve:resolve,reject:reject};
 	this.thenCache.push(todo);
 	return this;
-}
+};
 
 
 Defer.prototype.triggerThen = function(){
@@ -57,7 +57,7 @@ Defer.prototype.triggerThen = function(){
 		if(this.errorHandle)
 			this.value = this.errorHandle.call(undefined, this.rejectReason);
 		return this;
-	}
+	};
 
 	if(this.status === 'resolved'){
 		res = current.resolve;
@@ -77,7 +77,7 @@ Defer.prototype.triggerThen = function(){
 	}else{//不是函数则忽略
 		this.triggerThen();
 	}
-}
+};
 
 
 Defer.prototype.catch = function(fn){
@@ -90,4 +90,4 @@ Defer.prototype.catch = function(fn){
 	}else{
 		this.errorHandle = null;
 	}
-}
+};
