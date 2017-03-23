@@ -92,36 +92,38 @@ then : function(onFulfilled, onRejected){
 
 ### 3.2then参数的调用时期和要求：
 
-（1）onFulfilled(onResolved)：可选参数，如果不是函数则必须忽略;
+ (1) onFulfilled(onResolved)：可选参数，如果不是函数则必须忽略;
 
-（2）onRejected：可选参数，如果不是函数则必须忽略;
+ (2) onRejected：可选参数，如果不是函数则必须忽略;
 
-（3）当promise成功执行，所有onFulfilled按注册顺序执行，如果promise被拒绝，所有onRejected按注册顺序执行；
+ (3) 当promise成功执行，所有onFulfilled按注册顺序执行，如果promise被拒绝，所有onRejected按注册顺序执行；
 
-（4）onFulfilled 和 onRejected必须作为纯函数调用并且promise内部executor函数执行完返回promise对象后才可执行then方法。这里包含两个点:
+ (4) onFulfilled 和 onRejected必须作为纯函数调用
+
+ (5) promise的executor操作完毕并调用resolve或reject后才可执行then的参数onFulfilled 和 onRejected。
 
 #### api调用示例
 ```html
 new promise().then(fn).then(fn).then(fn).....
 ```
 
-第一，两个函数必须作为纯函数调用。所谓纯函数调用我认为是函数调用时，不通过OOP思想封装成Object并调用Object里函数方法（this会指向该Object），不用call、apply、bind改变this指向，而是单纯调用函数并且this的值是undefined（严格模式才会如此，非严格模式this指向window）；则代码应是这样(示例)：
+谈谈规则(4)，两个函数必须作为纯函数调用。所谓纯函数调用我认为是函数调用时，不通过OOP思想封装成Object并调用Object里函数方法（this会指向该Object），不用call、apply、bind改变this指向，而是单纯调用函数并且this的值是undefined（严格模式才会如此，非严格模式this指向window）；则代码应是这样(示例)：
 ```html
 onFulfilled.call(undefined, promise_value);
 ```
 
-第二，等待executor函数执行完毕才可调用then函数的参数。我们知道executor内部很多情况下会有异步操作，而我们调用then方法与创建promise对象在同一个“执行上下文”当中的(从api调用示例可知)，显然then方法不可能在创建promise对象之后立即执行其onFulfilled 或 onRejected，而是通过promise内部缓存存储onFulfilled 和 onRejected，并在executor操作完毕得到promise代理的值后返回给then的参数。而executor函数如果在promise下面直接调用，则会比then方法
+谈谈规则(5)，等待executor操作完才可调用then参数。我们知道executor内部很多情况下会有异步操作，而我们调用then方法与创建promise对象在同一个“执行上下文”当中的(从api调用示例可知)，显然then方法不可能在创建promise对象之后立即执行其参数onFulfilled 或 onRejected，而是通过promise内部缓存存储onFulfilled 和 onRejected（一般为数组），当需要执行参数时候调用数组的shift方法则可按注册顺序执行,这样解决了规则(3),所以then方法任务是缓存参数，而规则(1)(2)只能下放到触发onFulfilled 或 onRejected时候才判断。整个过程就是executor执行完毕得到promise代理的值然后返回给then参数。
 
 所以then的代码应该是这样写：
 ```html
 ...
-then : function (onFulfilled, onRejected){
+then : function (onFulfilled, onRejected){//只做缓存作用
  this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected});
 },
 ...
 ```
 
-Defer的代码应该是这样写：
+而executor函数如果在promise下面直接调用，则会比then函数先执行，如果executor是同步操作，那么Promise的resolve或reject方法会在then前面执行，而then此时还没做好缓存onFulfilled 或 onRejected任务Promise就开始按顺序调用onFulfilled 或 onRejected必然会出错。为了让then先执行，Defer的代码应该是这样写：
 ```html
 function Defer(executor){
   if(!(this instanceof Defer)){
@@ -137,23 +139,22 @@ function Defer(executor){
 	this.value = undefined;
 	this.rejectReason = null;
 	var self = this;
-	setTimeout(function(){//异步执行executor
+	setTimeout(function(){//把executor的call任务插入到Event Loop的消息队列去，以异步执行executor，避免与then方法同步
 
   	try{
-    	executor.call(self, self.resolve.bind(self), self.reject.bind(self));//传递resolve，reject方法
+    	executor.call(self, self.resolve.bind(self), self.reject.bind(self));
   	}catch(e){
     	self.reject(e);
   	}
 
 	 }, 0);
-
 }
 ```
 
 最重要的是，executor函数内部异步执行之后是如何触发then参数的？大家可以思考一下。。。
 
 
-我们可以回看下promise/A+的规范要求，executor方法会有两个参数：resolve，reject，都是处理promise状态，并设置promise的value值；我们可以借用这两个方法来调用then参数，把（1）、（2）条规则判断下放到triggerThen处理代码如下：
+我们可以回看下promise/A+的规范要求，executor方法会有两个参数：resolve，reject，都是处理promise状态，并设置promise的value值；我们可以借用这两个方法来调用then参数，把(1)、(2)条规则判断下放到triggerThen处理代码如下：
 ```html
 ...
 resolve : function(value){
@@ -175,36 +176,29 @@ triggerThen : function(){
 ...
 ```
 ### 3.5 triggerThen 处理
-
-
-### 3.5代码合并
-
+综合上一小节的理论阐述，triggerThen直接贴出代码，旁边会加上注释说明属于哪种规则
 ```html
-function Defer(executor){
-  this.status = 'pending';
-  this.thenCache = [];
-}
+Defer.prototype.triggerThen = function(){
+	var current = this.thenCache.shift();//规则(3)
+	var res = null;
 
-Defer.prototype = {
-  constructor ： Defer,
-  resolve : function(value){
-    this.status = 'fulfilled';
-    this.value = value;//promise的值
-    this.triggerThen();//触发then参数
-  },
-  reject : function(value){
-    this.status = 'rejected';
-    this.value = value;
-    this.triggerThen();
-  },
-  triggerThen : function(){
-    ...
-  }
-  then : function(onFulfilled, onRejected){
-    this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected});
-    return this;
-  }
-}
+	if(!current){//成功解析并读取完then cache
+		return this;
+	}
+
+	if(this.status === 'resolved'){
+		res = current.resolve;
+	}else if(this.status === 'rejected'){
+		res = current.reject;
+	}
+
+	if(typeof res === 'function'){//规则(1)(2)
+		this.value = res.call(undefined, this.value);//重置promise的value，规则(4)
+		this.triggerThen();//继续执行then链
+	}else{//不是函数则忽略
+		this.triggerThen();//规则(1)(2)
+	}
+};
 ```
 
 
@@ -228,9 +222,9 @@ Defer.prototype.triggerThen = function(){
 
 	if(!current && this.status === 'resolved'){//成功解析并读取完then cache
 		return this;
-	}else if(this.status === 'rejected'){//解析失败
+	}else if(!current && this.status === 'rejected'){//解析失败，并读取完then cache,直接调用errorHandle
 		if(this.errorHandle)
-			this.value = this.errorHandle.call(undefined, this.rejectReason);
+			this.value = this.errorHandle.call(undefined, this.rejectReason);//处理异常部分
 		return this;
 	};
 
@@ -244,7 +238,7 @@ Defer.prototype.triggerThen = function(){
 		try{
 			this.value = res.call(undefined, this.value);//重置promise的value
 			this.triggerThen();//继续执行then链
-		}catch(e){
+		}catch(e){//处理异常部分
 			if(this.errorHandle)
 				this.value = this.errorHandle.call(undefined, e);
 			return this;
