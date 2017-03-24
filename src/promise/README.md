@@ -102,7 +102,8 @@ then : function(onFulfilled, onRejected){
 
  (5) promise的executor执行完毕并调用resolve或reject方可调用then参数onFulfilled 和 onRejected。
 
- (6) 无论上一次promise状态是resolved还是rejected，只要还有未执行then或catch（只处理reject状态）存在且做了处理，返回的promise均为resolved；
+ (6) 无论promise状态是resolved还是rejected，只要还有未执行onFulfilled,onRejected或catch（只处理reject状态）存在且做了处理，返回的promise均为resolved状态；（该规则在下一节”triggerThen处理”和下下节”catch异常“会有注释，一看便知）
+
 #### api调用示例
 ```html
 new promise().then(fn).then(fn).then(fn).....
@@ -192,7 +193,7 @@ Defer.prototype.triggerThen = function(){
 
 	if(typeof res === 'function'){//规则(1)(2)
 		this.value = res.call(undefined, this.value);//重置promise的value，规则(4)
-    this.status = 'resolved';//规则(6)
+    this.status = 'resolved';//规则(6)，只要有处理，则状态为resolved
 		this.triggerThen();//继续执行then链
 	}else{//不是函数则忽略
 		this.triggerThen();//规则(1)(2)
@@ -202,7 +203,7 @@ Defer.prototype.triggerThen = function(){
 
 
 ## 4 异常处理
-当promise在处理过程中出现问题，可能是代码出错，可能是throw抛出了异常，其处理的方式和then一样，缓存异常处理函数，在triggerThen函数中根据都在代码如下：
+当promise在处理过程中出现问题，可能是代码出错，可能是throw抛出了异常，并且抛出异常之后promise状态则为rejected，如果用户提供catch处理，则把promise状态更改为resolved，其处理的方式和then一样，缓存异常处理函数，在triggerThen函数中根据都在代码如下：
 ```html
  ...
  catch : function (onFulfilled, onRejected){
@@ -223,7 +224,7 @@ Defer.prototype.triggerThen = function(){
 		return this;
 	}else if(!current && this.status === 'rejected'){//解析失败，并读取完then cache,直接调用errorHandle
 		if(this.errorHandle){
-      this.status = 'resolved';//catch处理后改为resolved
+      this.status = 'resolved';//catch处理后改为resolved，规则（6）
       this.value = this.errorHandle.call(undefined, this.rejectReason);//处理异常部分
     }
 		return this;
@@ -242,8 +243,11 @@ Defer.prototype.triggerThen = function(){
 			this.triggerThen();//继续执行then链
 		}catch(e){//处理异常部分
       this.status＝ 'rejected';//异常则自动设为rejected
+      if(this.thenCache.length > 0){//若有
+
+      }
 			if(this.errorHandle)｛
-        this.status = 'resolved';//catch处理后改为resolved
+        this.status = 'resolved';//catch处理后改为resolved，规则（6）
 				this.value = this.errorHandle.call(undefined, e);
       ｝
       return this;
