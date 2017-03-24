@@ -79,9 +79,7 @@ Defer.prototype = {
 
 ### 3.1简要
 
-promise/A＋规范提出通过then方法访问当前Promise的代理值，并且可被同一个promise调用多次，最后函数返回promise对象。
-所以Defer函数需加上then函数：
-
+promise/A＋规范提出通过then方法访问当前Promise的代理值，并且可被同一个promise调用多次，最后函数返回promise对象,所以then函数：
 ```html
 ...
 then : function(onFulfilled, onRejected){
@@ -90,7 +88,7 @@ then : function(onFulfilled, onRejected){
 ...
 ```
 
-### 3.2then参数的调用时期和要求：
+### 3.2then参数的调用时期和要求：（核心）
 
  (1) onFulfilled(onResolved)：可选参数，如果不是函数则必须忽略;
 
@@ -102,7 +100,7 @@ then : function(onFulfilled, onRejected){
 
  (5) promise的executor执行完毕并调用resolve或reject方可调用then参数onFulfilled 和 onRejected。
 
- (6) 无论promise状态是resolved还是rejected，只要还有未执行onFulfilled,onRejected或catch（只处理reject状态）存在且做了处理，返回的promise均为resolved状态；（该规则在下一节”triggerThen处理”和下下节”catch异常“会有注释，一看便知）
+ (6) 无论promise状态是resolved还是rejected，只要还有未执行onFulfilled,onRejected或catch（只处理reject状态）存在且调用，返回的promise均为resolved状态；（该规则在下一节”triggerThen处理”和下下节”catch异常“会有注释，一看便知）
 
 #### api调用示例
 ```html
@@ -121,6 +119,7 @@ onFulfilled.call(undefined, promise_value);
 ...
 then : function (onFulfilled, onRejected){//只做缓存作用
  this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected});
+ return this;
 },
 ...
 ```
@@ -136,20 +135,18 @@ function Defer(executor){
     throw 'Defer params should be a function';
   }
 
-	this.thenCache = [];//{resolve:,reject:}
-	this.status = 'pendding';
-	this.value = null;
-	this.rejectReason = null;//reject拒因
-	var self = this;
-	setTimeout(function(){//把executor的call任务插入到Event Loop的消息队列去，以异步执行executor，避免与then方法同步
-
-  try{
-    executor.call(self, self.resolve.bind(self), self.reject.bind(self));
-  }catch(e){
-    self.reject(e);
-  }
-
-	 }, 0);
+  this.thenCache = [];//{resolve:,reject:}
+  this.status = 'pendding';
+  this.value = null;
+  this.rejectReason = null;//reject拒因
+  var self = this;
+  setTimeout(function(){//把executor的call任务插入到Event Loop的消息队列去，以异步执行executor，避免与then方法同步
+    try{
+      executor.call(self, self.resolve.bind(self), self.reject.bind(self));
+    }catch(e){
+      self.reject(e);
+    }
+   },0);
 }
 ```
 
@@ -203,58 +200,52 @@ Defer.prototype.triggerThen = function(){
 
 
 ## 4 异常处理
-当promise在处理过程中出现问题，可能是代码出错，可能是throw抛出了异常，并且抛出异常之后promise状态则为rejected，如果用户提供catch处理，则把promise状态更改为resolved，其处理的方式和then一样，缓存异常处理函数，在triggerThen函数中根据都在代码如下：
+当promise在处理过程中出现问题，可能是代码出错，可能是throw抛出了异常，并且抛出异常之后promise状态为rejected，如果用户提供catch处理，则把promise状态更改为resolved，其处理的方式和then一样，缓存异常处理函数：
 ```html
- ...
- catch : function (onFulfilled, onRejected){
-  this.thenCache.push({onFulfilled:onFulfilled,onRejected:onRejected});
-  return this;
- },
- ...
+...
+Defer.prototype.catch = function(fn){
+  if(typeof fn === 'function'){
+    this.errorHandle = fn;
+  }
+};
+...
 ```
-
 
 triggerThen处理异常代码如下：
 ```html
 Defer.prototype.triggerThen = function(){
-	var current = this.thenCache.shift();
-	var res = null;
+  var current = this.thenCache.shift();
+  var res = null;
 
-	if(!current && this.status === 'resolved'){//成功解析并读取完then cache
-		return this;
-	}else if(!current && this.status === 'rejected'){//解析失败，并读取完then cache,直接调用errorHandle
-		if(this.errorHandle){
-      this.status = 'resolved';//catch处理后改为resolved，规则（6）
-      this.value = this.errorHandle.call(undefined, this.rejectReason);//处理异常部分
+  if(!current && this.status === 'resolved'){//成功解析并读取完then cache
+    return this;
+  }else if(!current && this.status === 'rejected'){//解析失败并读取完then cache，直接调用errorHandle
+    if(this.errorHandle){
+      this.value = this.errorHandle.call(undefined, this.rejectReason);
+      this.status= 'resolved';//规则(6)
     }
-		return this;
-	};
+    return this;
+  };
 
-	if(this.status === 'resolved'){
-		res = current.resolve;
-	}else if(this.status === 'rejected'){
-		res = current.reject;
-	}
+  if(this.status === 'resolved'){
+    res = current.resolve;
+  }else if(this.status === 'rejected'){
+    res = current.reject;
+  }
 
-	if(typeof res === 'function'){
-		try{
-			this.value = res.call(undefined, this.value);//重置promise的value
-      this.status＝ 'resolved';
-			this.triggerThen();//继续执行then链
-		}catch(e){//处理异常部分
-      this.status＝ 'rejected';//异常则自动设为rejected
-      if(this.thenCache.length > 0){//若有
-
-      }
-			if(this.errorHandle)｛
-        this.status = 'resolved';//catch处理后改为resolved，规则（6）
-				this.value = this.errorHandle.call(undefined, e);
-      ｝
-      return this;
-		}
-	}else{//不是函数则忽略
-		this.triggerThen();
-	}
+  if(typeof res === 'function'){
+    try{
+      this.value = res.call(undefined, this.value || this.rejectReason);//重置promise的value
+      this.status = 'resolved';
+      this.triggerThen();//继续执行then链
+    }catch(e){
+      this.status = 'rejected';//异常，则promise为reject,规则(6)
+      this.rejectReason = e;
+      return this.triggerThen();//触发then链
+    }
+  }else{//不是函数则忽略
+    this.triggerThen();
+  }
 };
 ```
 
@@ -270,16 +261,17 @@ Defer.prototype.triggerThen = function(){
 
  test().then(function(value){
    console.log('resolve then 1', value);
-   return value;
+   return 1;
  }).then(function(value){
    console.log('resolve then 2', value);
+   throw 2;
  }).catch(function(e){
    console.log('error',e);
  });
  //结果:
- //resolve then 1
- //resolve then 2
- //
+ //resolve then 1 1
+ //resolve then 2 1
+ //error 2
 
  function test2(){
    return new Defer(function(res,rej){
@@ -291,35 +283,38 @@ Defer.prototype.triggerThen = function(){
 
  test2().then(null, function(value){
    console.log('reject then 1', value);
-   return value;
+   throw 'error 1'
  }).then(null, function(value){
    console.log('reject then 2', value);
+   throw 'error 2';
  }).catch(function(e){
    console.log('error',e);
  });
  //结果:
  //reject then 1 1
- //reject then 2 1
- //error 1
+ //reject then 2 error 2
+ //error erro 2
 
  test2().then(null, function(value){
    console.log('reject then 1', value);
    throw 'throw error from then 1';
- }).then(null, function(value){
-   console.log('reject then 2', value);
+ }).then(function(value){
+   console.log('resolve then 2', value);
  }).catch(function(e){
    console.log('error',e);
  });
  //结果:
- //reject then 1
+ //reject then 1 1
  //error throw error from then 1
 ```
 
 
 ## 5 小结
-一个简单版的Promise就大功告成，可能本文对Promise／A＋规范描述还不够详细，还有其他理论并没有过多描述，甚至有些理论有出入（比如then返回的本是新的Promise对象），请大家多多包涵；本次是简化了一些，以练习为主，学习Promise概念的核心思想，并通过代码实现，提高编码能力。对于理解本次Promise代码，最关键还是需要好好理解浏览器的事件循环（Event loop），一句话即Promise是先同步处理then、catch函数再异步处理executor函数，接着通过resolve或reject触发then、catch的参数。
+一个简单版的Promise就大功告成，可能本文对Promise／A＋规范描述还不够详细，还有其他理论并没有过多描述，甚至有些理论有出入（比如then返回的本是新的Promise对象），请大家多多包涵；本次是简化了一些，以练习为主，学习Promise概念的核心思想。对于理解本次Promise代码，最关键还是需要好好理解浏览器的事件循环（Event loop），一句话即Promise是先同步处理then、catch函数再异步处理executor函数，接着通过resolve或reject触发then、catch的参数。
 
-另外笔者埋了一个坑，Defer对象在resolve或reject函数调用之后已成settled状态（reject 或 reject），此时状态不能改变，而本次代码Defer本身自带了resolve和reject函数，是随时可改变自身状态，大家可以想像一下如何实现。可以参考Jquery的Deffered或者GitHub上的Q模块，两个实现的思路是一样。
+另外笔者埋了一个坑，Defer对象在resolve或reject函数调用之后已成settled状态（rejected 或 rejected），此时状态不能改变，也就为什么then每次返回的是一个新的promise，这样可返回不同状态的promise。而本次代码Defer本身自带了resolve和reject函数，是随时可改变自身状态，并且then仍是返回当前promise，大家可以想像一下如何改造实现。可以参考Jquery的Deffered或者GitHub上的Q模块，两个实现的思路是一样。
+
+有问题的请指正~~
 
 完整的源码点击这里：https://github.com/humyfred/js_demo/blob/master/src/promise/promise.js
 
