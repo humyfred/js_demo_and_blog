@@ -89,6 +89,9 @@ Defer.prototype.triggerThen = function(){
 	}
 };
 
+Defer.prototype.loadReject = function(){//抛出异常情况搜索thenCache是否还有onRejected处理
+  var then
+}
 
 Defer.prototype.catch = function(fn){
 	if(typeof fn === 'function'){
