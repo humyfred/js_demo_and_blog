@@ -57,25 +57,25 @@ Defer.prototype.triggerThen = function(){
     return this;
   };
 
-	if(this.status === 'resolved'){
+  if(this.status === 'resolved'){
     res = current.resolve;
-	}else if(this.status === 'rejected'){
+  }else if(this.status === 'rejected'){
     res = current.reject;
-	}
+  }
 
-	if(typeof res === 'function'){
+  if(typeof res === 'function'){
     try{
       this.value = res.call(undefined, this.value || this.rejectReason);//重置promise的value
       this.status = 'resolved';
-			this.triggerThen();//继续执行then链
-		}catch(e){
+      this.triggerThen();//继续执行then链
+    }catch(e){
       this.status = 'rejected';//异常，则promise为reject
       this.rejectReason = e;
       return this.triggerThen();//触发then链
-		}
-	}else{//不是函数则忽略
-		this.triggerThen();
-	}
+    }
+  }else{//不是函数则忽略
+    this.triggerThen();
+  }
 };
 
 Defer.prototype.catch = function(fn){
