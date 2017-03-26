@@ -30,7 +30,7 @@ function flatten(arr){
 缺点：只能降最多二维的数组,降更多维的数组需要定制化函数。
 
 
-### 3.使用reduce方法
+### 3.使用数组的reduce方法
 ```html
 function flatten(arr){
     return arr.reduce(function(acc,val){
@@ -42,7 +42,7 @@ function flatten(arr){
 
 缺点：硬要说缺点则是必须是在支持es5的浏览器。
 
-### 4.使用toString方法
+### 4.使用Object的toString方法
 ```html
 function flatten(arr){
    return arr.toString().split(',');
