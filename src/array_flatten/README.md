@@ -65,8 +65,11 @@ console.time();flatten(array);console.timeEnd()
 ### 测试结果（时间都是测试几次得来的平均值）
 
 第一种时间：default: 0.0220ms
+
 第二种时间：default: 0.0200ms（多维解析失败，数据作为参考）
+
 第三种时间：default: 0.0310ms
+
 第四种时间：default: 0.0403ms
 
 ### 测试总结
