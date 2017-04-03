@@ -1,5 +1,4 @@
 function Middleware(){
-  this.middlewares = [];
   this.cache = [];
 }
 
@@ -13,7 +12,7 @@ Middleware.prototype.use = function(fn){
 
 Middleware.prototype.next = function(fn){
 
-  if(this.middlewares.length > 0 ){
+  if(this.middlewares && this.middlewares.length > 0 ){
     var ware = this.middlewares.shift();
     ware.call(this, this.next.bind(this));
   }
@@ -21,7 +20,9 @@ Middleware.prototype.next = function(fn){
 
 
 Middleware.prototype.handleRequest = function(){
-  this.middlewares = JSON.parse(JSON.stringify(this.cache));//复制
+  this.middlewares = this.cache.map(function(fn){//复制
+    return fn;
+  });
   this.next();
 }
 
