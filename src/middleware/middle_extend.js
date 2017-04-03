@@ -1,7 +1,5 @@
 function Middleware(){
   this.middlewares = [];
-
-  setTimeout(this.handleRequest.bind(this), 0);
 }
 
 Middleware.prototype.use = function(fn){

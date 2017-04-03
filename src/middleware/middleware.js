@@ -1,14 +1,13 @@
 function Middleware(){
   this.middlewares = [];
-
-  setTimeout(this.handleRequest.bind(this), 0);
+  this.cache = [];
 }
 
 Middleware.prototype.use = function(fn){
   if(typeof fn !== 'function'){
     throw 'middleware must be a function';
   }
-  this.middlewares.push(fn);
+  this.cache.push(fn);
   return this;
 }
 
@@ -22,6 +21,7 @@ Middleware.prototype.next = function(fn){
 
 
 Middleware.prototype.handleRequest = function(){
+  this.middlewares = JSON.parse(JSON.stringify(this.cache));//复制
   this.next();
 }
 
