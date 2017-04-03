@@ -38,3 +38,4 @@ submit.before(report).before(validate).after(goBack)();
 // 验证通过
 // 上报数据
 // 提交数据
+// 返回首页
