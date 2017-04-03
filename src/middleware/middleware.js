@@ -24,3 +24,38 @@ Middleware.prototype.next = function(fn){
 Middleware.prototype.handleRequest = function(){
   this.next();
 }
+
+var middleware = new Middleware();
+middleware.use(function(next){console.log(1);next();})
+middleware.use(function(next){console.log(2);next();})
+middleware.use(function(next){console.log(3);})
+middleware.use(function(next){console.log(4);next();})
+middleware.handleRequest();
+//输出结果：
+//1
+//2
+//3
+//
+
+
+var middleware = new Middleware();
+middleware.use(function(next){
+  console.log(1);next();console.log('1结束');
+});
+middleware.use(function(next){
+   console.log(2);next();console.log('2结束');
+});
+middleware.use(function(next){
+   console.log(3);console.log('3结束');
+});
+middleware.use(function(next){
+   console.log(4);next();console.log('4结束');
+});
+middleware.handleRequest();
+//输出结果：
+//1
+//2
+//3
+//3结束
+//2结束
+//1结束
