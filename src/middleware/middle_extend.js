@@ -1,5 +1,6 @@
 function Middleware(){
   this.cache = [];
+  this.options = null;
 }
 
 Middleware.prototype.use = function(fn){
@@ -14,48 +15,45 @@ Middleware.prototype.next = function(fn){
 
   if(this.middlewares && this.middlewares.length > 0 ){
     var ware = this.middlewares.shift();
-    ware.call(this, this.next.bind(this));
+    ware.call(this, this.options, this.next.bind(this));
   }
 }
 
-
-Middleware.prototype.handleRequest = function(){
+Middleware.prototype.handleRequest = function(options){
   this.middlewares = this.cache.map(function(fn){//复制
     return fn;
   });
+  this.options = options;
   this.next();
 }
 
-function validate(next){
-  console.log('validate');
+function validate(options, next){
+  console.log('validate', options.data);
   next();//通过验证
 }
-function send(next){
+function send(options, next){
    setTimeout(function(){//模拟异步
-     console.log('send');
+     console.log('send', options.data);
+     options.url = 'www.baidu.com';//设置跳转的url
      next();
     }, 100);
 }
-function goBack(){
-   console.log('goBack');
+function goTo(options, next){
+   console.log('goTo', options.url);
 }
 
-function extend(child, parent){
-   child.prototype = new parent();
-   parent.call(child);
-}
-
-function submitForm(){
-   console.log('start submit');//这里可以做提交表单的前期工作
-}
-
-extend(submitForm, Middleware);
-
-(new submitForm()).use(validate).use(send).use(goBack).handleRequest();
-
+var submitForm = new Middleware();
+submitForm.use(validate).use(send).use(goTo);
+submitForm.handleRequest({data:{name:'xiaoxiong', age: 20}});
 //结果：
-// start submit
-// validate
+// validate Object {name: "xiaoxiong", age: 20}
 //
-// send
-// goBack
+// send Object {name: "xiaoxiong", age: 20}
+// goTo www.baidu.com
+
+submitForm.handleRequest({data:{name:'xiaohong', age: 21}});//触发第二次，改变数据内容
+//结果：
+// validate Object {name: "xiaohong", age: 21}
+//
+// send Object {name: "xiaohong", age: 21}
+// goTo www.baidu.com
