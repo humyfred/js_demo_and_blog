@@ -51,7 +51,7 @@ submit.before(report)(); //提交之前执行report
 ```
 从代码可以看出已经把统计和数据提交业务隔离起来，互不影响。
 
-但是如果提交数据之前需要验证功能并且依据验证结果是否能提交，怎么做？这里要改动before函数，看下代码：
+但是如果提交数据之前，需要数据验证并且依据验证结果判断是否能提交，怎么做？这里要改动before函数，看下代码：
 ```html
 Function.prototype.before = function(fn){//函数处理后执行fn
   var self = this;
@@ -95,6 +95,7 @@ submit.before(report).before(validate)();
 // 提交数据
 ```
 AOP思想在前端分解隔离业务已经做到位了，但是却有了一串长长的链式出来，如果处理不当很容易让维护者看晕，例如下面这样：
+
 ```html
 //提交数据前，验证数据，然后上报，在提交之后做返回首页的跳转
 function report(){
@@ -119,7 +120,7 @@ submit.before(report).before(validate).after(goBack)();
 ```
 栗子可能并没有那么晕，但是也得仔细看才能看懂整个流程，实际开发中估计会有更麻烦情况出现，另外，如果before或after的参数fn是一个异步操作的话，又需要做些patch，显然还是有些不足的，那么还有没有其他解决办法呢，既能隔离业务，又能方便清爽地使用～我们可以先看看其他框架的中间件解决方案。
 
-## 2. express 与 koa的中间件
+2. express 与 koa的中间件
 
 express和koa本身都是非常轻量的框架，express是集合路由和其他几个中间件合成的web开发框架，koa是express原班人马重新打造一个更轻量的框架，所以koa已经被剥离所有中间件，甚至连router中间件也被抽离出来，任由用户自行添加第三方中间件。express和koa中间件原理一样，我们就抽express来讲。
 我们先看下express中间件写法：
@@ -142,12 +143,12 @@ app.get('/', function(req, res, next) {
 });
 
 app.listen(3000);
-//整个请求处理过程就是先数据统计、日志统计，最后返回一个Hello World！
 ```
+//整个请求处理过程就是先数据统计、日志统计，最后返回一个Hello World！
 上图运作流程图如下：
 
 
-从上图来看，每一个“管道”都是一个中间件，每个中间件通过next方法传递执行权给下一个中间件，express就是一个调用各种中间件的框架。
+从上图来看，每一个“管道”都是一个中间件，每个中间件通过next方法传递执行权给下一个中间件，express就是一个收集并调用各种中间件的容器。
 
 中间件就是一个函数，通过express的use方法接收中间件，每个中间件有express传入的req，res和next参数。如果要把请求传递给下一个中间件必须使用 next() 方法。当调用res.send方法则此次请求结束，node直接返回请求给客户，但是若在res.send方法之后调用next方法，整个中间件链式调用还会往下执行，因为当前hello world所处的函数也是一块中间件，而res.send只是一个方法用于返回请求。
 
@@ -219,46 +220,108 @@ middleware.handleRequest();
 //1结束
 ```
 上面代码的流程图：
-可以看出：每一个中间件执行权利传递给下一个中间件并等待其结束以后又开始做别的事情，方法非常巧妙，有这特性读者可以玩转中间件。
 
-说到重点，我们如何在实际开发用到这种方法呢？比如在表单提交的逻辑上，先后有表单验证，数据提交，返回首页共三步逻辑。
+可以看出：每一个中间件执行权利传递给下一个中间件并等待其结束以后又回到当前并做别的事情，方法非常巧妙，有这特性读者可以玩转中间件。
+
+## 4. 实际应用
 ```html
-function validate(next){
-  console.log('validate');
+/**
+* @param data 验证的数据
+* @param next
+*/
+function validate(data, next){
+  console.log('validate', data);//验证
   next();//通过验证
 }
-function send(next){
+
+/**
+* @param data 发送的数据
+* @param next
+*/
+function send(data, next){
    setTimeout(function(){//模拟异步
-     console.log('send');
+     console.log('send', data);//已发送数据
      next();
     }, 100);
 }
-function goBack(){
-   console.log('goBack');
+function goTo(url, next){
+   console.log('goTo', url);//跳转
 }
 ```
-我们总不能每次new 一个middleware去集合所有逻辑，这样使用比较生硬，整体业务被包裹在middleware并不像是一个表单提交的业务，我们应该用submitForm函数来表示表单提交更为贴切，但是为了使用Middleware的功能又不能总是更改命名，我们应该用继承：
+validate和send函数都需要数据参数，目前Middleware只传next，需要传递data数据才能顺利执行下去，然而每个中间件需要的数据不一定都一致（就像goTo与validate、send）。
+
+我们需要引入一个options对象来包裹这一串逻辑需要的数据，每个中间件在options内提取自己所需的数据，这样就能满足所有中间件，Middleware函数做相应调整：
 ```html
-function extend(child, parent){
-   child.prototype = new parent();
-   parent.call(child);
+function Middleware(){
+  this.cache = [];
+  this.options = null;//缓存options
 }
 
-function submitForm(){
-   console.log('start submit');//这里可以做提交表单的前期工作
+Middleware.prototype.use = function(fn){
+  if(typeof fn !== 'function'){
+    throw 'middleware must be a function';
+  }
+  this.cache.push(fn);
+  return this;
 }
 
-extend(submitForm, Middleware);
+Middleware.prototype.next = function(fn){
 
-(new submitForm()).use(validate).use(send).use(goBack).handleRequest();
+  if(this.middlewares && this.middlewares.length > 0 ){
+    var ware = this.middlewares.shift();
+    ware.call(this, this.options, this.next.bind(this));//传入options与next
+  }
+}
+/**
+* @param options 数据的入口
+* @param next
+*/
+Middleware.prototype.handleRequest = function(options){
+  this.middlewares = this.cache.map(function(fn){
+    return fn;
+  });
+  this.options = options;//缓存数据
+  this.next();
+}
+```
+业务逻辑做相应修改：
+```html
+function validate(options, next){
+  console.log('validate', options.data);
+  next();//通过验证
+}
+function send(options, next){
+   setTimeout(function(){//模拟异步
+     console.log('send', options.data);
+     options.url = 'www.baidu.com';//设置跳转的url
+     next();
+    }, 100);
+}
+function goTo(options){
+   console.log('goTo', options.url);
+}
+
+var submitForm = new Middleware();
+submitForm.use(validate).use(send).use(goBack);
+submitForm.handleRequest({data:{name:'xiaoxiong', age: 20}});
+//结果：
+// validate Object {name: "xiaoxiong", age: 20}
+//
+// send Object {name: "xiaoxiong", age: 20}
+// goTo www.baidu.com
+
+submitForm.handleRequest({data:{name:'xiaohong', age: 21}});//触发第二次，改变数据内容
 
 //结果：
-// start submit
-// validate
+// validate Object {name: "xiaohong", age: 21}
 //
-// send
-// goBack
+// send Object {name: "xiaohong", age: 21}
+// goTo www.baidu.com
 ```
-通过以上代码，实现了业务分离，又能很好控制业务下发执行的权利，所以“中间件”模式算是一种不错的设计。从代码阅读难度和代码编写的角度来说难度并不大，能提高代码可维护性，只要维护人员拥有该方面的知识，问题就不大了。
+以上代码大功告成。
+
+## 5. 总结
+
+通过以上代码，实现了业务隔离，满足每个业务所需的数据，又能很好控制业务下发执行的权利，所以“中间件”模式算是一种不错的设计。从代码阅读和代码编写的角度来说难度并不大，只要维护人员拥有该方面的知识，问题就不大了。
 
 完整的源码点击这里：https://github.com/humyfred/js_demo_and_blog/tree/master/src/middleware
