@@ -76,6 +76,8 @@ function submit(){
 submit.before(report).before(validate)();
 //结果：
 // 验证不通过
+```
+```html
 function report(){
    console.log('上报数据');
    return true;
@@ -120,7 +122,7 @@ submit.before(report).before(validate).after(goBack)();
 ```
 栗子可能并没有那么晕，但是也得仔细看才能看懂整个流程，实际开发中估计会有更麻烦情况出现，另外，如果before或after的参数fn是一个异步操作的话，又需要做些patch，显然还是有些不足的，那么还有没有其他解决办法呢，既能隔离业务，又能方便清爽地使用～我们可以先看看其他框架的中间件解决方案。
 
-2. express 与 koa的中间件
+## 2. express 与 koa的中间件
 
 express和koa本身都是非常轻量的框架，express是集合路由和其他几个中间件合成的web开发框架，koa是express原班人马重新打造一个更轻量的框架，所以koa已经被剥离所有中间件，甚至连router中间件也被抽离出来，任由用户自行添加第三方中间件。express和koa中间件原理一样，我们就抽express来讲。
 我们先看下express中间件写法：
@@ -181,8 +183,10 @@ Middleware.prototype.handleRequest = function(){//执行请求
   });
   this.next();
 }
-我们用Middleware简单使用一下：
+```
 
+我们用Middleware简单使用一下：
+```html
 var middleware = new Middleware();
 middleware.use(function(next){console.log(1);next();})
 middleware.use(function(next){console.log(2);next();})
@@ -309,7 +313,8 @@ submitForm.handleRequest({data:{name:'xiaoxiong', age: 20}});
 //
 // send Object {name: "xiaoxiong", age: 20}
 // goTo www.baidu.com
-
+```
+```html
 submitForm.handleRequest({data:{name:'xiaohong', age: 21}});//触发第二次，改变数据内容
 
 //结果：
