@@ -12,7 +12,6 @@ Middleware.prototype.use = function(fn){
 }
 
 Middleware.prototype.next = function(fn){
-
   if(this.middlewares && this.middlewares.length > 0 ){
     var ware = this.middlewares.shift();
     ware.call(this, this.options, this.next.bind(this));
