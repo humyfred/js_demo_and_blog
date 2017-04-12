@@ -26,7 +26,3 @@ function deepCopy(target, source){
 	}
 	return target;
 }
-
-
-//
-//
