@@ -26,12 +26,18 @@
   
   <script>
     var a = document.querySelector('button');
+<<<<<<< HEAD
     a.addEventListener('click', function(){console.timeEnd();console.log('a 标签');}, false);
     a.addEventListener('touchend', function(){console.time();}, false);
+=======
+    a.addEventListener('click', function(){console.log('a 标签');}, false);
+    
+>>>>>>> dd069dd93f8bc94ec2e5a87507088a87f7022735
     function sendClick(target){
        var event = document.createEvent('MouseEvent');
        event.initEvent('click', true, true);
        target.dispatchEvent(event);
+<<<<<<< HEAD
     }
     document.body.addEventListener('touchend', function(evt){
         //evt.preventDefault();
@@ -43,6 +49,18 @@
     document.body.addEventListener('click', function(evt){
       console.log('click:', evt.currentTarget);
     }, true);
+=======
+       
+    }
+    document.addEventListener('touchend', function(evt){console.log('touchend:', evt.target);
+        evt.preventDefault();
+        console.log('dispatch', evt.target);
+        sendClick(evt.target);
+  
+    }, false);
+    
+    document.addEventListener('click', function(evt){console.log('document currentTarget:', evt.currentTarget);}, true);
+>>>>>>> dd069dd93f8bc94ec2e5a87507088a87f7022735
     
   </script>
 </html>
