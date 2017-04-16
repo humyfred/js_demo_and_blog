@@ -26,22 +26,23 @@
   
   <script>
     var a = document.querySelector('button');
-    a.addEventListener('click', function(){console.log('a 标签');}, false);
-    
+    a.addEventListener('click', function(){console.timeEnd();console.log('a 标签');}, false);
+    a.addEventListener('touchend', function(){console.time();}, false);
     function sendClick(target){
        var event = document.createEvent('MouseEvent');
        event.initEvent('click', true, true);
        target.dispatchEvent(event);
-       
     }
-    document.addEventListener('touchend', function(evt){console.log('touchend:', evt.target);
-        evt.preventDefault();
-        console.log('dispatch', evt.target);
-        sendClick(evt.target);
-  
+    document.body.addEventListener('touchend', function(evt){
+        //evt.preventDefault();
+        // console.log('dispatch', evt.target);
+        //sendClick(evt.target);
+        //console.log('touchend')
     }, false);
     
-    document.addEventListener('click', function(evt){console.log('document currentTarget:', evt.currentTarget);}, true);
+    document.body.addEventListener('click', function(evt){
+      console.log('click:', evt.currentTarget);
+    }, true);
     
   </script>
 </html>
