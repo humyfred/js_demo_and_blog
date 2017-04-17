@@ -1,5 +1,6 @@
 function fastclick(){
-
+	this.tapTimeout = 700;
+	this.trackingClickStart = 0;
 	this.init();
 }
 
@@ -8,8 +9,7 @@ fastclick.prototype.init = function(){
 	document.body.addEventListener('touchstart', this.touchStart.bind(this), false);
 	document.body.addEventListener('touchmove', this.touchMove.bind(this), false);
 	document.body.addEventListener('touchend', this.touchEnd.bind(this), false);
-	//document.body.addEventListener('touchcancel', this.touchCancel.bind(this), false);
-
+	document.body.addEventListener('touchcancel', this.touchCancel.bind(this), false);
 }
 
 fastclick.prototype.sendClick = function(target, event){
@@ -26,7 +26,7 @@ fastclick.prototype.touchStart = function(event){
 	}
 
 	this.target = event.target;
-
+	this.trackingClickStart = event.timeStamp;
 }
 
 fastclick.prototype.touchMove = function(event){
@@ -39,22 +39,18 @@ fastclick.prototype.touchEnd = function(event){
 	if(!this.target){//移动则不派发click事件
 		return false;
 	}
+
+	if ((event.timeStamp - this.trackingClickStart) > this.tapTimeout) {//长按超时取消click
+		return true;
+	}
+
+	this.trackingClickStart = 0;
+
 	event.preventDefault();
 	this.sendClick(this.target, event);
+
 }
 
 fastclick.prototype.touchCancel = function() {
 	this.target = null;
-};
-
-
-fastclick.prototype.onclick = function(evt) {
-	if(evt.forwardedTouchEvent){
-		return true;
-	}
-	if(this.target){
-		return true;
-	}
-	evt.preventDefault();
-	evt.stopPropagation();
 };
