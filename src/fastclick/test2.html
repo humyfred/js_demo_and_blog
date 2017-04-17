@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <!-- 上述3个meta标签*必须*放在最前面，任何其他内容都*必须*跟随其后！ -->
+    <title>Bootstrap 101 Template</title>
+
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://cdn.bootcss.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://cdn.bootcss.com/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <h1>你好，世界！</h1>
+
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="Fastclick.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <button>hahaha</button><br><br>
+  </body>
+  
+  <script>
+    var a = document.querySelector('button');
+    a.addEventListener('click', function(){
+      var sp = document.createElement('span');
+      sp.innerText = Date.now() + '   click';
+      document.body.appendChild(sp);
+      document.body.appendChild(document.createElement('br'));
+      document.body.appendChild(document.createElement('br'));
+    }, false);
+
+
+    a.addEventListener('touchstart', function(){
+      var sp = document.createElement('span');
+      sp.innerText = Date.now() + '   touchstart';
+      document.body.appendChild(sp);
+      document.body.appendChild(document.createElement('br'));
+    }, false);
+
+    a.addEventListener('touchend', function(){
+      var sp = document.createElement('span');
+      sp.innerText = Date.now() + '   touchend';
+      document.body.appendChild(sp);
+      document.body.appendChild(document.createElement('br'));
+    }, false);
+    //document.body.addEventListener('click', function(evt){console.log(evt)}, true);
+    new fastclick()
+    //FastClick.attach(document.body);
+  </script>
+</html>
