@@ -15,6 +15,5 @@ var srv = http.createServer( (req, res) => {
 });
 
 function parserUrl(req){
-	console.log(url.parse(req.url))
 	return pathname = '.' + url.parse(req.url).pathname;
 }
