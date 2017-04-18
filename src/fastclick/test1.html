@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-    <title>test 1</title>
+    <title>300ms延迟现象</title>
   </head>
   <body>
   <div>
@@ -13,17 +13,32 @@
   </div>
    
   </body>
-  <script src="Fastclick.js"></script>
-  <script src="https://cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
+  
   <script>
-   $('button')[0].addEventListener('touchend', function(evt){
+   var btn = document.querySelector('button');
+
+   btn.addEventListener('touchstart', function(evt){
+      var sp = document.createElement('span');
+      sp.innerText = Date.now() + '   touchstart';
+      document.body.appendChild(sp);
+      document.body.appendChild(document.createElement('br'));
+   })
+
+   btn.addEventListener('touchmove', function(evt){
+      var sp = document.createElement('span');
+      sp.innerText = Date.now() + '   touchmove';
+      document.body.appendChild(sp);
+      document.body.appendChild(document.createElement('br'));
+   })
+
+   btn.addEventListener('touchend', function(evt){
       var sp = document.createElement('span');
       sp.innerText = Date.now() + '   touchend';
       document.body.appendChild(sp);
       document.body.appendChild(document.createElement('br'));
    })
 
-   $('button')[0].addEventListener('click', function(evt){
+   btn.addEventListener('click', function(evt){
       var sp = document.createElement('span');
       sp.innerText = Date.now() + '   click';
       document.body.appendChild(sp);

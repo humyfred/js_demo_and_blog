@@ -1,28 +1,34 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" style="height:100%">
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>test 3</title>
+    <title>点透现象</title>
   </head>
-  <body>
+  <body style="height:100%;">
   <div>
-    <button>按钮a</button>
+    <button >按钮a</button>
     <button style="position: absolute;left: 8px;">按钮b</button>
 
   </div>
    
   </body>
-  <script src="https://cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
   <script>
-   $('button')[0].addEventListener('click', function(evt){
-    alert('a');
-   })
 
-   $('button')[1].addEventListener('touchend', function(evt){
+  var btn = document.querySelectorAll('button');
+
+  btn[0].addEventListener('click', function(evt){
+    alert('a');
+   });
+
+  btn[1].addEventListener('touchend', function(evt){
     alert('b');
-    $(this).hide();
-   })
+    this.style.display = 'none';
+  });
+
+  document.body.addEventListener('click', function(evt){//捕获过程看事件源
+    console.log(evt.target);
+  }, true);
   </script>
 </html>

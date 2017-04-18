@@ -1,15 +1,15 @@
 function fastclick(){
 	this.tapTimeout = 700;
 	this.trackingClickStart = 0;
+	this.body = document.body;
 	this.init();
 }
 
 fastclick.prototype.init = function(){
-	document.body.addEventListener('click', this.onClick, true);
-	document.body.addEventListener('touchstart', this.touchStart.bind(this), false);
-	document.body.addEventListener('touchmove', this.touchMove.bind(this), false);
-	document.body.addEventListener('touchend', this.touchEnd.bind(this), false);
-	document.body.addEventListener('touchcancel', this.touchCancel.bind(this), false);
+	this.body.addEventListener('touchstart', this.touchStart.bind(this), false);
+	this.body.addEventListener('touchmove', this.touchMove.bind(this), false);
+	this.body.addEventListener('touchend', this.touchEnd.bind(this), false);
+	this.body.addEventListener('touchcancel', this.touchCancel.bind(this), false);
 }
 
 fastclick.prototype.sendClick = function(target, event){

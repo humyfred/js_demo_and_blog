@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>touchend后触发click，body在click捕获阶段看到的target</title>
+    <title>解决点透现象</title>
   </head>
   <body>
   <div>
@@ -14,19 +14,22 @@
   </div>
    
   </body>
-  <script src="https://cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
+  <script src="Fastclick.js"></script>
   <script>
-   $('button')[0].addEventListener('click', function(evt){
+  var btn = document.querySelectorAll('button');
+  new fastclick();
+
+  btn[0].addEventListener('click', function(evt){
     alert('a');
-   })
+  })
 
-   $('button')[1].addEventListener('touchend', function(evt){
+  btn[1].addEventListener('touchend', function(evt){
     alert('b');
-    $(this).hide();
-   });
+    this.style.display = 'none';
+  });
 
-   document.body.addEventListener('click', function(evt){
+   document.body.addEventListener('click', function(evt){//捕获过程看事件源
     console.log(evt.target);
-   });
+  }, true);
   </script>
 </html>
